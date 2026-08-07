@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Local vector database
+chroma_db/
+
+# Fetched FastAPI docs (not ours to commit)
+fastapi_docs/
+fastapi/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
