@@ -1,0 +1,22 @@
+# --- Core LangChain pieces ---
+langchain-core
+langchain-text-splitters
+
+# --- Vector database (local, persistent) ---
+langchain-chroma
+chromadb
+
+# --- Embeddings: local + free by default (downloads a small model once) ---
+langchain-huggingface
+sentence-transformers
+
+# --- LLM for the generation step ---
+langchain-anthropic
+
+# --- Config / env ---
+python-dotenv
+
+# --- Optional embedding providers (uncomment to swap in config.py) ---
+# langchain-voyageai      # Anthropic's recommended embeddings (needs VOYAGE_API_KEY)
+# voyageai
+# langchain-openai        # OpenAI embeddings (needs OPENAI_API_KEY)
