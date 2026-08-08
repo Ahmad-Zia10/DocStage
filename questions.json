@@ -1,0 +1,26 @@
+[
+  {
+    "question": "How do I make an endpoint that only logged-in users can access?",
+    "expected_source_contains": "security"
+  },
+  {
+    "question": "How do I read query parameters in a path operation?",
+    "expected_source_contains": "query-param"
+  },
+  {
+    "question": "How do I use dependencies to share logic between endpoints?",
+    "expected_source_contains": "dependencies"
+  },
+  {
+    "question": "How do I return a custom HTTP error to the client?",
+    "expected_source_contains": "handling-errors"
+  },
+  {
+    "question": "How do I enable CORS in a FastAPI application?",
+    "expected_source_contains": "cors"
+  },
+  {
+    "question": "How do I run work in the background after sending the response?",
+    "expected_source_contains": "background-tasks"
+  }
+]
