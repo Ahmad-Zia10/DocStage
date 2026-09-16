@@ -1,18 +1,7 @@
-"""
-rag.py  —  THE QUERY PHASE (runs live, every time someone asks)
-==============================================================
-This is the bottom half of the pipeline:
-
-    question -> EMBED -> SIMILARITY SEARCH -> stuff passages into a prompt
-             -> Claude writes a grounded, cited answer
-
-The public function you'll call from everywhere else is `answer(question)`.
-"""
-
 from functools import lru_cache
 
 from langchain_chroma import Chroma
-from langchain_anthropic import ChatAnthropic
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
@@ -34,7 +23,7 @@ PROMPT = ChatPromptTemplate.from_messages([
      "End your answer with a 'Sources:' line listing the source files you used."),
     ("human",
      "Documentation excerpts:\n\n{context}\n\n"
-     "Question: {question}"),
+     "Question: {question}"),       
 ])
 
 
@@ -61,7 +50,7 @@ def _get_chain():
     'take the prompt, feed it to the model, then parse the model's reply to a
     string'. LangSmith (if enabled via env vars) traces every link here.
     """
-    llm = ChatAnthropic(model=config.LLM_MODEL, temperature=config.LLM_TEMPERATURE)
+    llm = ChatGroq(model=config.LLM_MODEL, temperature=config.LLM_TEMPERATURE)
     return PROMPT | llm | StrOutputParser()
 
 

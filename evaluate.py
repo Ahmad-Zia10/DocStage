@@ -1,24 +1,14 @@
 """
-evaluate.py  —  turn "I built a chatbot" into "I measured it"
-=============================================================
-This is the file that makes your portfolio credible. It runs a fixed set of
-questions through the system and reports numbers you can quote.
+Two metrics:
 
-Two metrics, matching what you learned:
-
-  1. Retrieval hit-rate@k  (free, no LLM calls)
+  1. Retrieval hit-rate@k
      For each question we know which doc *should* answer it. Did similarity
      search actually pull that doc into the top-k? This isolates whether the
      RETRIEVAL half is working, independent of the LLM.
 
-  2. Faithfulness  (optional, uses the LLM as a judge — costs a little)
+  2. Faithfulness  (uses the LLM as a judge — costs a little)
      Is the generated answer actually supported by the retrieved excerpts, or
      did the model wander off and make things up? Enable with --judge.
-
-Run:
-    python evaluate.py            # retrieval hit-rate + latency only (free)
-    python evaluate.py --answers  # also print each generated answer
-    python evaluate.py --judge    # also LLM-judge faithfulness (uses API)
 """
 
 import argparse
@@ -29,7 +19,7 @@ from pathlib import Path
 import config
 from rag import retrieve, answer
 
-QUESTIONS_PATH = Path(__file__).parent / "eval" / "questions.json"
+QUESTIONS_PATH = Path(__file__).parent / "questions.json"
 
 
 def load_questions() -> list[dict]:
@@ -55,10 +45,10 @@ def judge_faithfulness(question: str, generated: str, docs) -> bool:
     more careful rubrics, but this teaches the core idea — grade the output
     against the evidence it was supposed to use.
     """
-    from langchain_anthropic import ChatAnthropic
+    from langchain_groq import ChatGroq
 
     context = "\n\n".join(d.page_content for d in docs)
-    judge = ChatAnthropic(model=config.LLM_MODEL, temperature=0)
+    judge = ChatGroq(model=config.LLM_MODEL, temperature=0)
     verdict = judge.invoke(
         "You are grading whether an answer is fully supported by the given "
         "source text. Reply with exactly one word: YES or NO.\n\n"

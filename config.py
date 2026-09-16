@@ -2,33 +2,22 @@
   - Indexing phase  -> DOCS_DIR, CHUNK_SIZE, CHUNK_OVERLAP, the embedding model
   - Query phase     -> TOP_K, the LLM
 """
-
+from langchain_huggingface import HuggingFaceEmbeddings
 import os
 from dotenv import load_dotenv
 
-#  Load environment variables from .env file 
 load_dotenv()
 
 ## Paths
 
 DOCS_DIR = os.getenv("DOCS_DIR", "./fastapi_docs")
 
-# Where the vector database persists its files on disk. 
 CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_db")
 
-# A name for this collection inside Chroma.
-COLLECTION_NAME = "fastapi_docs"
-
-# Chunking
-
-# Size is measured in CHARACTERS here (not tokens) — ~1000 chars is big enough to hold
-# a complete idea, small enough to stay about one topic. 
+COLLECTION_NAME = "fastapi_docs" 
 
 CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 150  # shared text so ideas sitting at boundaries aren't cut out.
-
-
-# Retrieval 
+CHUNK_OVERLAP = 150  
 
 TOP_K = 4  # how many nearest chunks similarity search returns per question
 
@@ -44,23 +33,15 @@ EMBEDDING_MODELS = {
 
 
 # LLM 
-LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 LLM_TEMPERATURE = 0.0  # 0 = as deterministic/factual as possible
 
-
+#create an embeddings object to be used in both ingest.py and ask.py
 def get_embeddings():
-    """Build the embedding object for the provider chosen above.
-
-    IMPORTANT: whatever this returns must be used for BOTH indexing the docs
-    and embedding the question at query time. Same model both times, always —
-    otherwise the question and the chunks live in different number-spaces and
-    similarity search is meaningless.
-    """
     provider = EMBEDDING_PROVIDER.lower()
     model_name = EMBEDDING_MODELS[provider]
 
     if provider == "huggingface":
-        from langchain_huggingface import HuggingFaceEmbeddings
         return HuggingFaceEmbeddings(model_name=model_name)
 
     # if provider == "voyage":

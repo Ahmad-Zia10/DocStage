@@ -23,7 +23,10 @@ docs, with citations, fully instrumented and measured.
 - [x] LangChain wiring + optional LangSmith tracing
 - [x] Eval harness: retrieval hit-rate, latency, optional faithfulness
 
-**Done when:** runs end to end and prints baseline metrics. → **Baseline recorded:**
+**Done when:** runs end to end and prints baseline metrics. →**Baseline recorded (beta, n=6):**
+- Retrieval hit-rate@4: **100%** (6/6) — correct doc reaches the top-4 every time; precision is loose (`release-notes.md` and `strict-content-type.md` keep stealing slots).
+- Faithfulness (LLM-judge, binary YES/NO, n=6): **67%** (4/6) — small sample; the two flagged items (security, CORS) look judge-strictness-driven, not true hallucination. Treat as a soft number.
+- Latency: **not yet clean** — warmup-inflated (~3s avg); re-measure with a warmup call before trusting it.
 `hit-rate@4 = ____`, `avg latency = ____ ms`, `faithfulness = ____` _(fill in)._
 
 ---
