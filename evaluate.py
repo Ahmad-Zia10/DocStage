@@ -4,6 +4,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from langchain_groq import ChatGroq
 
 import config
 from rag import retrieve, answer
@@ -33,7 +34,7 @@ def retrieval_metrics(question: str, expected: str):
 def judge_groundedness(question: str, generated: str, docs):
     """Graded LLM-as-judge: 1-5 score + the single unsupported claim (or 'none')."""
     context = "\n\n".join(d.page_content for d in docs)
-    judge = config.get_llm()  # uses your configured provider (Groq)
+    judge = ChatGroq(model=config.LLM_MODEL,temperature=config.LLM_TEMPERATURE) # uses your configured provider (Groq)
     raw = judge.invoke(
         "You grade whether an ANSWER is grounded in the SOURCE TEXT.\n"
         "Reply in EXACTLY this format:\n"

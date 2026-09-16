@@ -23,11 +23,14 @@ docs, with citations, fully instrumented and measured.
 - [x] LangChain wiring + optional LangSmith tracing
 - [x] Eval harness: retrieval hit-rate, latency, optional faithfulness
 
-**Done when:** runs end to end and prints baseline metrics. →**Baseline recorded (beta, n=6):**
-- Retrieval hit-rate@4: **100%** (6/6) — correct doc reaches the top-4 every time; precision is loose (`release-notes.md` and `strict-content-type.md` keep stealing slots).
-- Faithfulness (LLM-judge, binary YES/NO, n=6): **67%** (4/6) — small sample; the two flagged items (security, CORS) look judge-strictness-driven, not true hallucination. Treat as a soft number.
-- Latency: **not yet clean** — warmup-inflated (~3s avg); re-measure with a warmup call before trusting it.
-`hit-rate@4 = ____`, `avg latency = ____ ms`, `faithfulness = ____` _(fill in)._
+**Done when:** runs end to end and prints baseline metrics. →**Baseline recorded (beta, n=6, post-warmup):**
+- hit-rate@4: **100%** (6/6) — saturated, uninformative.
+- hit-rate@1: **67%** (4/6) — security & handling-errors land the right doc at rank 2 (noise: `strict-content-type.md`, `response-status-code.md` outrank it).
+- MRR: **0.833** — real headroom for reranking.
+- Latency: **~49 ms** (post-warmup) — clean.
+- Groundedness (graded judge, n=6): **4.5/5 avg, 83% ≥4**. The one flag (security) is a *retrieval gap* — `get-current-user.md` was never retrieved — not a hallucination.
+
+**Key insight:** the faithfulness miss is a retrieval miss in disguise → hybrid search + reranking should lift hit@1, MRR, *and* groundedness together.g
 
 ---
 
