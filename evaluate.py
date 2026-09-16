@@ -16,8 +16,11 @@ def load_questions() -> list[dict]:
     return json.loads(QUESTIONS_PATH.read_text(encoding="utf-8"))
 
 
-def retrieval_metrics(question: str, expected: str):
-    """Retrieve, then find the RANK of the first correct doc (for hit@1 + MRR)."""
+def retrieval_metrics(question: str, expected):
+    """Retrieve, then find the RANK of the first doc matching ANY accepted stem."""
+    if isinstance(expected, str):          # tolerate old single-string labels
+        expected = [expected]
+
     start = time.perf_counter()
     docs = retrieve(question)
     latency = time.perf_counter() - start
@@ -25,7 +28,7 @@ def retrieval_metrics(question: str, expected: str):
     sources = [d.metadata.get("source", "") for d in docs]
     rank = None
     for i, s in enumerate(sources, start=1):
-        if expected.lower() in s.lower():
+        if any(e.lower() in s.lower() for e in expected):   # ANY accepted source counts
             rank = i
             break
     return rank, latency, sources

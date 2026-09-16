@@ -1,26 +1,118 @@
 [
   {
     "question": "How do I make an endpoint that only logged-in users can access?",
-    "expected_source_contains": "security"
+    "expected_source_contains": ["security"]
+  },
+  {
+    "question": "How do I get the currently authenticated user inside a route?",
+    "expected_source_contains": ["get-current-user", "security"]
+  },
+  {
+    "question": "How do I issue a login token when a user sends a username and password?",
+    "expected_source_contains": ["simple-oauth2", "oauth2-jwt", "security"]
   },
   {
     "question": "How do I read query parameters in a path operation?",
-    "expected_source_contains": "query-param"
+    "expected_source_contains": ["query-params"]
   },
   {
-    "question": "How do I use dependencies to share logic between endpoints?",
-    "expected_source_contains": "dependencies"
+    "question": "How do I add validation like minimum and maximum length to a query parameter?",
+    "expected_source_contains": ["query-params-str-validations", "query-params"]
+  },
+  {
+    "question": "How do I capture a value directly from the URL path?",
+    "expected_source_contains": ["path-params"]
+  },
+  {
+    "question": "How do I require a path parameter to be greater than zero?",
+    "expected_source_contains": ["path-params-numeric-validations", "path-params"]
+  },
+  {
+    "question": "How do I accept a JSON payload in a request?",
+    "expected_source_contains": ["body"]
+  },
+  {
+    "question": "How do I define nested objects inside a request body?",
+    "expected_source_contains": ["body-nested-models", "body"]
+  },
+  {
+    "question": "How do I take several body parameters in one request?",
+    "expected_source_contains": ["body-multiple-params", "body"]
+  },
+  {
+    "question": "How do I control exactly what fields the response returns?",
+    "expected_source_contains": ["response-model"]
+  },
+  {
+    "question": "How do I set a custom success status code, like 201 for created?",
+    "expected_source_contains": ["response-status-code"]
   },
   {
     "question": "How do I return a custom HTTP error to the client?",
-    "expected_source_contains": "handling-errors"
+    "expected_source_contains": ["handling-errors"]
   },
   {
-    "question": "How do I enable CORS in a FastAPI application?",
-    "expected_source_contains": "cors"
+    "question": "How do I add custom headers to an error response?",
+    "expected_source_contains": ["handling-errors"]
   },
   {
-    "question": "How do I run work in the background after sending the response?",
-    "expected_source_contains": "background-tasks"
+    "question": "How do I share common logic across several endpoints?",
+    "expected_source_contains": ["dependencies"]
+  },
+  {
+    "question": "How do I use a class as a dependency?",
+    "expected_source_contains": ["classes-as-dependencies", "dependencies"]
+  },
+  {
+    "question": "How do I open a database session per request and close it afterward?",
+    "expected_source_contains": ["dependencies-with-yield", "dependencies", "sql-databases"]
+  },
+  {
+    "question": "How do I apply a dependency to every route in the whole app?",
+    "expected_source_contains": ["global-dependencies", "dependencies"]
+  },
+  {
+    "question": "How do I let my frontend on another domain call this API?",
+    "expected_source_contains": ["cors"]
+  },
+  {
+    "question": "How do I run a slow job after the response has already been sent?",
+    "expected_source_contains": ["background-tasks"]
+  },
+  {
+    "question": "How do I run some code on every incoming request?",
+    "expected_source_contains": ["middleware"]
+  },
+  {
+    "question": "How do I receive form fields instead of a JSON body?",
+    "expected_source_contains": ["request-forms", "request-form"]
+  },
+  {
+    "question": "How do I handle uploaded files?",
+    "expected_source_contains": ["request-files"]
+  },
+  {
+    "question": "How do I read a cookie sent by the client?",
+    "expected_source_contains": ["cookie-params"]
+  },
+  {
+    "question": "How do I read a custom header from an incoming request?",
+    "expected_source_contains": ["header-params"]
+  },
+  {
+    "question": "How do I write automated tests for my endpoints?",
+    "expected_source_contains": ["testing"]
+  },
+  {
+    "question": "How do I serve static files such as images or CSS?",
+    "expected_source_contains": ["static-files"]
+  },
+  {
+    "question": "How do I organize a large application across multiple routers and files?",
+    "expected_source_contains": ["bigger-applications"]
+  },
+  {
+    "question": "How do I run setup and cleanup code on app startup and shutdown?",
+    "expected_source_contains": ["events", "lifespan"]
   }
 ]
