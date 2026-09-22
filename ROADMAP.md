@@ -23,14 +23,19 @@ docs, with citations, fully instrumented and measured.
 - [x] LangChain wiring + optional LangSmith tracing
 - [x] Eval harness: retrieval hit-rate, latency, optional faithfulness
 
-**Done when:** runs end to end and prints baseline metrics. →**Baseline recorded (beta, n=6, post-warmup):**
-- hit-rate@4: **100%** (6/6) — saturated, uninformative.
-- hit-rate@1: **67%** (4/6) — security & handling-errors land the right doc at rank 2 (noise: `strict-content-type.md`, `response-status-code.md` outrank it).
-- MRR: **0.833** — real headroom for reranking.
-- Latency: **~49 ms** (post-warmup) — clean.
-- Groundedness (graded judge, n=6): **4.5/5 avg, 83% ≥4**. The one flag (security) is a *retrieval gap* — `get-current-user.md` was never retrieved — not a hallucination.
+**Done when:** runs end to end and prints baseline metrics. →***Baseline recorded (beta, n=29, post-warmup):**
+- hit-rate@4: **86%** (25/29)
+- hit-rate@1: **41%** (12/29) — correct doc is the top result under half the time
+- MRR: **0.612** — many correct docs stuck at rank 2–3
+- Latency: sub-100ms typical (avg dragged up by a few outliers)
 
-**Key insight:** the faithfulness miss is a retrieval miss in disguise → hybrid search + reranking should lift hit@1, MRR, *and* groundedness together.g
+**Four genuine retrieval misses (alpha targets, keep as regression tests):**
+- "path param > zero" → returned query-params, not path-params-numeric-validations (path-vs-query confusion)
+- "apply dependency to every route" → returned bigger-applications, not global-dependencies (adjacent-vs-about)
+- "read a custom header" → returned middleware/response-headers, not header-params (request-vs-response)
+- "accept a JSON payload" → total breakdown, body.md absent (vocabulary gap → hybrid search's poster child)
+
+**Takeaway:** small embeddings capture topic but not fine distinctions → better embeddings + hybrid search + reranking should lift hit@1 and MRR and rescue these four.
 
 ---
 

@@ -1,10 +1,15 @@
 # --- Core LangChain pieces ---
 langchain-core
 langchain-text-splitters
+langchain-community   # DirectoryLoader/TextLoader, BM25Retriever
+langchain-classic     # EnsembleRetriever (moved here in LangChain 1.x)
 
 # --- Vector database (local, persistent) ---
 langchain-chroma
 chromadb
+
+# --- Keyword search (BM25), the second half of hybrid retrieval ---
+rank_bm25
 
 # --- Embeddings: local + free by default (downloads a small model once) ---
 langchain-huggingface

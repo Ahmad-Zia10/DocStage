@@ -5,7 +5,12 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
+from langchain_community.retrievers import BM25Retriever
+# EnsembleRetriever lives in langchain-classic as of LangChain 1.x (it used to
+# be importable from `langchain.retrievers`).
+from langchain_classic.retrievers import EnsembleRetriever
 
+from ingest import load_markdown_docs, chunk_docs
 import config
 
 
@@ -29,17 +34,36 @@ PROMPT = ChatPromptTemplate.from_messages([
 
 @lru_cache(maxsize=1)
 def _get_retriever():
-    """Open the persisted vector store and expose it as a retriever.
+    """Hybrid retriever: dense (meaning) + BM25 (keyword), fused.
 
-    Cached so we don't re-open Chroma on every question. The retriever uses the
-    SAME embedding model as ingest.py (via config) — that's mandatory.
+    - Dense half: the existing Chroma vector search — catches meaning matches.
+    - Keyword half: BM25 built in memory from the SAME chunks — catches literal
+      term matches the embedding misses.
+    - EnsembleRetriever fuses both ranked lists (weighted reciprocal-rank
+      fusion), so a doc ranked high by EITHER search rises to the top.
+
+    Cached so we don't rebuild on every question. Both halves must use the same
+    embedding model / chunking as ingest.py (via config) — that's mandatory.
     """
+    # 1. Dense retriever — the meaning half (unchanged from before).
     vector_store = Chroma(
         collection_name=config.COLLECTION_NAME,
         persist_directory=config.CHROMA_DIR,
         embedding_function=config.get_embeddings(),
     )
-    return vector_store.as_retriever(search_kwargs={"k": config.TOP_K})
+    dense = vector_store.as_retriever(search_kwargs={"k": config.TOP_K})
+
+    # 2. Keyword retriever — the literal half. BM25 indexes in memory, so we
+    #    regenerate the same chunks ingest.py produced (no re-embedding).
+    chunks = chunk_docs(load_markdown_docs(config.DOCS_DIR))
+    keyword = BM25Retriever.from_documents(chunks)
+    keyword.k = config.TOP_K
+
+    # 3. Fuse them. Weights say how much to trust each half; start balanced.
+    return EnsembleRetriever(
+        retrievers=[dense, keyword],
+        weights=config.HYBRID_WEIGHTS,   # [dense, keyword], e.g. [0.5, 0.5]
+    )
 
 
 @lru_cache(maxsize=1)

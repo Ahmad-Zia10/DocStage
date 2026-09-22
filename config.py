@@ -21,6 +21,9 @@ CHUNK_OVERLAP = 150
 
 TOP_K = 4  # how many nearest chunks similarity search returns per question
 
+# Hybrid search: how much to trust [dense/meaning, keyword/BM25]. Must sum to 1.0.
+HYBRID_WEIGHTS = [0.5, 0.5]
+
 
 # Embedding model  (turns text -> meaning-vectors, used in BOTH phases)
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
