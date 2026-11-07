@@ -1,11 +1,3 @@
-"""
-ingest.py  —  THE INDEXING PHASE
-
-After this finishes, the vector database on disk holds one meaning-vector per
-chunk, each tagged with the file it came from (so we can cite it later).
-
-"""
-
 from pathlib import Path
 
 from langchain_core.documents import Document

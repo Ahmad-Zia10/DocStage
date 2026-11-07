@@ -19,13 +19,15 @@ COLLECTION_NAME = "fastapi_docs"
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150  
 
-TOP_K = 4  # how many nearest chunks similarity search returns per question
+TOP_K = 5            # chunks that reach the LLM, and the k in hit@k
+CANDIDATE_K = 20     # each retriever fetches this many before fusion
 
-# Hybrid search: how much to trust [dense/meaning, keyword/BM25]. Must sum to 1.0.
-HYBRID_WEIGHTS = [0.5, 0.5]
+# "dense" = vector only (baseline), "hybrid" = dense + BM25 fused
+RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")
+HYBRID_WEIGHTS = [0.5, 0.5]   # [dense, bm25]
 
 
-# Embedding model  (turns text -> meaning-vectors, used in BOTH phases)
+# Embedding model
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
 
 EMBEDDING_MODELS = {
