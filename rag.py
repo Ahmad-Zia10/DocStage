@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 
 from langchain_chroma import Chroma
@@ -6,18 +7,13 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
-# EnsembleRetriever lives in langchain-classic as of LangChain 1.x (it used to
-# be importable from `langchain.retrievers`).
-from langchain_classic.retrievers import EnsembleRetriever
 
 from ingest import load_markdown_docs, chunk_docs
 import config
 
 
-# The instruction we wrap around the retrieved passages. Two rules do the heavy
-# lifting: (1) answer ONLY from the provided context — this is what stops the
-# model from falling back on its fuzzy memory and hallucinating; (2) if the
-# context doesn't contain the answer, say so instead of guessing.
+# Two rules do the heavy lifting: answer ONLY from the excerpts, and say so
+# when they don't contain the answer instead of guessing.
 PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "You are a precise assistant for the FastAPI documentation.\n"
@@ -28,49 +24,78 @@ PROMPT = ChatPromptTemplate.from_messages([
      "End your answer with a 'Sources:' line listing the source files you used."),
     ("human",
      "Documentation excerpts:\n\n{context}\n\n"
-     "Question: {question}"),       
+     "Question: {question}"),
 ])
+
+STOPWORDS = {"how", "do", "i", "a", "an", "the", "to", "in", "of", "on", "for",
+             "is", "my", "and", "or", "it", "what", "can", "with", "from",
+             "this", "that", "be", "are", "does"}
+
+
+# ---------------------------------------------------------------- retrieval
+
+def tokenize(text):
+    """Lowercase, keep words, drop filler words."""
+    words = re.findall(r"[a-z0-9_]+", text.lower())
+    return [w for w in words if w not in STOPWORDS]
 
 
 @lru_cache(maxsize=1)
-def _get_retriever():
-    vector_store = Chroma(
+def get_dense():
+    store = Chroma(
         collection_name=config.COLLECTION_NAME,
         persist_directory=config.CHROMA_DIR,
         embedding_function=config.get_embeddings(),
     )
-
-    if config.RETRIEVAL_MODE == "dense":
-        return vector_store.as_retriever(search_kwargs={"k": config.TOP_K})
-
-    # Hybrid: each side returns a wider candidate pool...
-    dense = vector_store.as_retriever(search_kwargs={"k": config.CANDIDATE_K})
-
-    # BM25 indexes in memory, built from the SAME chunks as Chroma
-    chunks = chunk_docs(load_markdown_docs(config.DOCS_DIR))
-    bm25 = BM25Retriever.from_documents(chunks)
-    bm25.k = config.CANDIDATE_K
-
-    # ...and the two ranked lists are merged with weighted Reciprocal Rank Fusion
-    return EnsembleRetriever(retrievers=[dense, bm25], weights=config.HYBRID_WEIGHTS)
-
+    return store.as_retriever(search_kwargs={"k": config.CANDIDATE_K})
 
 
 @lru_cache(maxsize=1)
-def _get_chain():
-    """Build the tiny LangChain 'chain': prompt -> LLM -> plain text.
+def get_bm25():
+    # Built from the SAME chunks as Chroma, so RRF can match them up
+    chunks = chunk_docs(load_markdown_docs(config.DOCS_DIR))
+    if config.BM25_CLEAN_TOKENS:
+        bm25 = BM25Retriever.from_documents(chunks, preprocess_func=tokenize)
+    else:
+        bm25 = BM25Retriever.from_documents(chunks)   # LangChain default: split on spaces
+    bm25.k = config.CANDIDATE_K
+    return bm25
 
-    The `|` operator is LangChain's LCEL syntax — read it left to right as
-    'take the prompt, feed it to the model, then parse the model's reply to a
-    string'. LangSmith (if enabled via env vars) traces every link here.
-    """
+
+def rrf(result_lists, c=60):
+    """Reciprocal Rank Fusion: score = sum of 1 / (c + rank) across lists."""
+    scores, docs = {}, {}
+    for results in result_lists:
+        for rank, doc in enumerate(results, start=1):
+            key = doc.page_content
+            scores[key] = scores.get(key, 0) + 1 / (c + rank)
+            docs[key] = doc
+    ranked = sorted(scores, key=scores.get, reverse=True)
+    return [docs[key] for key in ranked]
+
+
+def retrieve(question: str) -> list[Document]:
+    if config.RETRIEVAL_MODE == "dense":
+        results = get_dense().invoke(question)
+    elif config.RETRIEVAL_MODE == "bm25":
+        results = get_bm25().invoke(question)
+    else:
+        results = rrf([get_dense().invoke(question), get_bm25().invoke(question)])
+    # Cut to exactly TOP_K so every mode is measured on the same k
+    return results[: config.TOP_K]
+
+
+# --------------------------------------------------------------- generation
+
+@lru_cache(maxsize=1)
+def _get_chain():
+    """prompt -> LLM -> plain text."""
     llm = ChatGroq(model=config.LLM_MODEL, temperature=config.LLM_TEMPERATURE)
     return PROMPT | llm | StrOutputParser()
 
 
 def _format_context(docs: list[Document]) -> str:
-    """Lay the retrieved chunks out as text, each tagged with its source so the
-    model can cite it."""
+    """Tag each chunk with its source so the model can cite it."""
     blocks = []
     for i, doc in enumerate(docs, start=1):
         source = doc.metadata.get("source", "unknown")
@@ -78,17 +103,8 @@ def _format_context(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(blocks)
 
 
-def retrieve(question: str) -> list[Document]:
-    # Cut to exactly TOP_K so every mode is measured on the same k
-    return _get_retriever().invoke(question)[: config.TOP_K]
-
-
 def answer(question: str) -> dict:
-    """Full RAG: retrieve real passages, then answer strictly from them.
-
-    Returns a dict with the answer text and the list of source files, so the
-    caller can show citations.
-    """
+    """Retrieve real passages, then answer strictly from them."""
     docs = retrieve(question)
     context = _format_context(docs)
     response = _get_chain().invoke({"context": context, "question": question})

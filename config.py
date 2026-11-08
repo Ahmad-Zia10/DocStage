@@ -19,12 +19,10 @@ COLLECTION_NAME = "fastapi_docs"
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150  
 
-TOP_K = 5            # chunks that reach the LLM, and the k in hit@k
-CANDIDATE_K = 20     # each retriever fetches this many before fusion
-
-# "dense" = vector only (baseline), "hybrid" = dense + BM25 fused
-RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")
-HYBRID_WEIGHTS = [0.5, 0.5]   # [dense, bm25]
+TOP_K = 5
+CANDIDATE_K = 20
+RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")              # dense | bm25 | hybrid
+BM25_CLEAN_TOKENS = os.getenv("BM25_CLEAN_TOKENS", "1") == "1"      # 0 = default tokenizer
 
 
 # Embedding model
