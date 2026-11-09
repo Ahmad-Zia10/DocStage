@@ -96,12 +96,10 @@ def rerank(question: str, docs: list[Document]) -> list[Document]:
     return [doc for _, doc in ranked]
 
 
-def retrieve(question: str) -> list[Document]:
-    docs = candidates(question)
-    if config.RERANK:
-        docs = rerank(question, docs[: config.RERANK_POOL])
-    # Cut to exactly TOP_K so every mode is measured on the same k
-    return docs[: config.TOP_K]
+def generate(question: str, docs: list[Document]) -> str:
+    """Write an answer from the given chunks only."""
+    context = _format_context(docs)
+    return _get_chain().invoke({"context": context, "question": question})
 
 
 # --------------------------------------------------------------- generation
@@ -122,11 +120,11 @@ def _format_context(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(blocks)
 
 
+
 def answer(question: str) -> dict:
     """Retrieve real passages, then answer strictly from them."""
     docs = retrieve(question)
-    context = _format_context(docs)
-    response = _get_chain().invoke({"context": context, "question": question})
+    response = generate(question, docs)
 
     sources = []
     for doc in docs:
