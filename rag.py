@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
+from sentence_transformers import CrossEncoder
 
 from ingest import load_markdown_docs, chunk_docs
 import config
@@ -62,6 +63,11 @@ def get_bm25():
     return bm25
 
 
+@lru_cache(maxsize=1)
+def get_reranker():
+    return CrossEncoder(config.RERANK_MODEL)
+
+
 def rrf(result_lists, c=60):
     """Reciprocal Rank Fusion: score = sum of 1 / (c + rank) across lists."""
     scores, docs = {}, {}
@@ -74,15 +80,28 @@ def rrf(result_lists, c=60):
     return [docs[key] for key in ranked]
 
 
-def retrieve(question: str) -> list[Document]:
+def candidates(question: str) -> list[Document]:
+    """Stage 1: the full candidate list (dense, bm25, or RRF-fused), before any cutting."""
     if config.RETRIEVAL_MODE == "dense":
-        results = get_dense().invoke(question)
-    elif config.RETRIEVAL_MODE == "bm25":
-        results = get_bm25().invoke(question)
-    else:
-        results = rrf([get_dense().invoke(question), get_bm25().invoke(question)])
+        return get_dense().invoke(question)
+    if config.RETRIEVAL_MODE == "bm25":
+        return get_bm25().invoke(question)
+    return rrf([get_dense().invoke(question), get_bm25().invoke(question)])
+
+
+def rerank(question: str, docs: list[Document]) -> list[Document]:
+    """Stage 2: the cross-encoder reads question + chunk together and scores each pair."""
+    scores = get_reranker().predict([(question, d.page_content) for d in docs])
+    ranked = sorted(zip(scores, docs), key=lambda pair: pair[0], reverse=True)
+    return [doc for _, doc in ranked]
+
+
+def retrieve(question: str) -> list[Document]:
+    docs = candidates(question)
+    if config.RERANK:
+        docs = rerank(question, docs[: config.RERANK_POOL])
     # Cut to exactly TOP_K so every mode is measured on the same k
-    return results[: config.TOP_K]
+    return docs[: config.TOP_K]
 
 
 # --------------------------------------------------------------- generation

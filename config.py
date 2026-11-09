@@ -24,6 +24,9 @@ CANDIDATE_K = 20
 RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")              # dense | bm25 | hybrid
 BM25_CLEAN_TOKENS = os.getenv("BM25_CLEAN_TOKENS", "1") == "1"      # 0 = default tokenizer
 
+RERANK = os.getenv("RERANK", "1") == "1"
+RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L6-v2"
+RERANK_POOL = 20
 
 # Embedding model
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")

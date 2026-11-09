@@ -1,43 +1,37 @@
-"""evaluate.py — strengthened eval harness (graded judge, hit@1, MRR, clean latency)."""
+"""evaluate.py — retrieval metrics, candidate-pool ceiling, latency, optional judge."""
 
 import argparse
 import json
+import statistics
 import time
 from pathlib import Path
+
 from langchain_groq import ChatGroq
 
 import config
-from rag import retrieve, answer
+from rag import retrieve, candidates, answer
 
 QUESTIONS_PATH = Path(__file__).parent / "questions.json"
-
 
 def load_questions() -> list[dict]:
     return json.loads(QUESTIONS_PATH.read_text(encoding="utf-8"))
 
 
-def retrieval_metrics(question: str, expected):
-    """Retrieve, then find the RANK of the first doc matching ANY accepted stem."""
-    if isinstance(expected, str):          # tolerate old single-string labels
+def first_rank(docs, expected):
+    """Rank of the first chunk whose source matches ANY accepted label."""
+    if isinstance(expected, str):
         expected = [expected]
-
-    start = time.perf_counter()
-    docs = retrieve(question)
-    latency = time.perf_counter() - start
-
-    sources = [d.metadata.get("source", "") for d in docs]
-    rank = None
-    for i, s in enumerate(sources, start=1):
-        if any(e.lower() in s.lower() for e in expected):   # ANY accepted source counts
-            rank = i
-            break
-    return rank, latency, sources
+    for i, doc in enumerate(docs, start=1):
+        src = doc.metadata.get("source", "").lower()
+        if any(e.lower() in src for e in expected):
+            return i
+    return None
 
 
-def judge_groundedness(question: str, generated: str, docs):
+def judge_groundedness(question, generated, docs):
     """Graded LLM-as-judge: 1-5 score + the single unsupported claim (or 'none')."""
     context = "\n\n".join(d.page_content for d in docs)
-    judge = ChatGroq(model=config.LLM_MODEL,temperature=config.LLM_TEMPERATURE) # uses your configured provider (Groq)
+    judge = ChatGroq(model=config.LLM_MODEL, temperature=0)
     raw = judge.invoke(
         "You grade whether an ANSWER is grounded in the SOURCE TEXT.\n"
         "Reply in EXACTLY this format:\n"
@@ -67,29 +61,35 @@ def main() -> None:
 
     questions = load_questions()
 
-    # Warm up so the one-time model load isn't counted in latency.
     print("Warming up...")
-    retrieve(questions[0]["question"])
+    retrieve(questions[0]["question"])   # loads embeddings, BM25 and reranker before timing
 
-    hits_k = hits_1 = 0
-    reciprocal_sum = 0.0
-    latencies = []
-    scores = []
+    print(f"\nEvaluating {len(questions)} questions (k={config.TOP_K}, "
+          f"mode={config.RETRIEVAL_MODE}, rerank={config.RERANK}, "
+          f"pool={config.RERANK_POOL})\n")
 
-    print(f"\nEvaluating {len(questions)} questions "
-          f"(k={config.TOP_K}, embeddings={config.EMBEDDING_PROVIDER})\n")
+    hits_k = hits_1 = pool_hits = 0
+    rr_sum = 0.0
+    latencies, scores = [], []
 
     for item in questions:
         q, expected = item["question"], item["expected_source_contains"]
-        rank, latency, sources = retrieval_metrics(q, expected)
-        latencies.append(latency)
 
-        hits_k += int(rank is not None)
-        hits_1 += int(rank == 1)
-        reciprocal_sum += (1.0 / rank) if rank else 0.0
+        start = time.perf_counter()
+        docs = retrieve(q)
+        latencies.append(time.perf_counter() - start)
+
+        rank = first_rank(docs, expected)
+        pool_rank = first_rank(candidates(q)[: config.RERANK_POOL], expected)
+
+        hits_k += rank is not None
+        hits_1 += rank == 1
+        rr_sum += 1 / rank if rank else 0
+        pool_hits += pool_rank is not None
 
         mark = f"rank {rank}" if rank else "MISS"
-        print(f"[{mark:>7}] ({latency*1000:.0f} ms) {q}")
+        note = "" if pool_rank else "   [not in pool]"
+        print(f"[{mark:>7}] ({latencies[-1] * 1000:.0f} ms) {q}{note}")
 
         if args.answers or args.judge:
             result = answer(q)
@@ -99,15 +99,16 @@ def main() -> None:
                 score, unsupported = judge_groundedness(q, result["answer"], result["docs"])
                 scores.append(score)
                 print(f"          groundedness: {score}/5  |  unsupported: {unsupported}")
-        print()
 
     n = len(questions)
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print("RESULTS")
-    print(f"  hit-rate@{config.TOP_K}: {hits_k}/{n} = {hits_k / n:.0%}")
+    print(f"  hit-rate@{config.TOP_K}:  {hits_k}/{n} = {hits_k / n:.0%}")
     print(f"  hit-rate@1:  {hits_1}/{n} = {hits_1 / n:.0%}")
-    print(f"  MRR:         {reciprocal_sum / n:.3f}")
-    print(f"  avg latency: {1000 * sum(latencies) / n:.0f} ms  (post-warmup)")
+    print(f"  MRR:         {rr_sum / n:.3f}")
+    print(f"  hit@{config.RERANK_POOL} (pool): {pool_hits}/{n} = {pool_hits / n:.0%}")
+    print(f"  latency p50: {1000 * statistics.median(latencies):.0f} ms   "
+          f"avg: {1000 * sum(latencies) / n:.0f} ms")
     if scores:
         grounded = sum(1 for s in scores if s >= 4)
         print(f"  groundedness avg: {sum(scores) / len(scores):.1f}/5")
