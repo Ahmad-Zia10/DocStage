@@ -88,18 +88,22 @@ def candidates(question: str) -> list[Document]:
         return get_bm25().invoke(question)
     return rrf([get_dense().invoke(question), get_bm25().invoke(question)])
 
+def retrieve(question: str) -> list[Document]:
+    docs = candidates(question)
+    if config.RERANK:
+        docs = rerank(question, docs[: config.RERANK_POOL])
+    # Cut to exactly TOP_K so every mode is measured on the same k
+    return docs[: config.TOP_K]
 
 def rerank(question: str, docs: list[Document]) -> list[Document]:
     """Stage 2: the cross-encoder reads question + chunk together and scores each pair."""
     scores = get_reranker().predict([(question, d.page_content) for d in docs])
-    ranked = sorted(zip(scores, docs), key=lambda pair: pair[0], reverse=True)
-    return [doc for _, doc in ranked]
-
-
-def generate(question: str, docs: list[Document]) -> str:
-    """Write an answer from the given chunks only."""
-    context = _format_context(docs)
-    return _get_chain().invoke({"context": context, "question": question})
+    scored = [
+        Document(page_content=d.page_content,
+                 metadata={**d.metadata, "rerank_score": float(s)})
+        for d, s in zip(docs, scores)
+    ]
+    return sorted(scored, key=lambda d: d.metadata["rerank_score"], reverse=True)
 
 
 # --------------------------------------------------------------- generation
@@ -119,7 +123,10 @@ def _format_context(docs: list[Document]) -> str:
         blocks.append(f"[Excerpt {i} | source: {source}]\n{doc.page_content}")
     return "\n\n---\n\n".join(blocks)
 
-
+def generate(question: str, docs: list[Document]) -> str:
+    """Write an answer from the given chunks only."""
+    context = _format_context(docs)
+    return _get_chain().invoke({"context": context, "question": question})
 
 def answer(question: str) -> dict:
     """Retrieve real passages, then answer strictly from them."""
