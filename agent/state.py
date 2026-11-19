@@ -3,7 +3,10 @@ from typing import TypedDict
 from langchain_core.documents import Document
 
 
-class State(TypedDict):
-    question: str            # the user's question
-    docs: list[Document]     # chunks found by retrieval
-    answer: str              # the final answer
+class AgentState(TypedDict):
+    question: str            # the user's original question
+    query: str               # what we search with (rewritten on retries)
+    attempts: int            # how many searches so far
+    docs: list[Document]     # chunks from the latest search
+    relevant: bool           # grader verdict on those chunks
+    answer: str              # final answer
