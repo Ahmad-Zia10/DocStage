@@ -13,6 +13,10 @@ def main():
     for step in agent.stream({"question": question}, stream_mode="updates"):
         for node, update in step.items():
             print(f"-> {node}")
+            if node == "grade":
+                print(f"   relevant: {update['relevant']}")
+            if node == "rewrite":
+                print(f"   new query: {update['query']}")
             state.update(update)
 
     print("\n" + state["answer"])

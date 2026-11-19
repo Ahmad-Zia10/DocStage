@@ -28,6 +28,8 @@ RERANK = os.getenv("RERANK", "1") == "1"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L6-v2"
 RERANK_POOL = 20
 
+MAX_REWRITES = 2      # extra searches before the agent escalates
+
 # Embedding model
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")
 
