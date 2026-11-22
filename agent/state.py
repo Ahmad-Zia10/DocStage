@@ -10,3 +10,4 @@ class AgentState(TypedDict):
     docs: list[Document]     # chunks from the latest search
     relevant: bool           # grader verdict on those chunks
     answer: str              # final answer
+    intent: str              # "docs_question" or "out_of_scope"
