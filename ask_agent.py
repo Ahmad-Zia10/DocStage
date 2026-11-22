@@ -15,14 +15,17 @@ def main():
             print(f"-> {node}")
             if node == "grade":
                 print(f"   relevant: {update['relevant']}")
+            if node == "classify":
+                print(f"   intent: {update['intent']}")
             if node == "rewrite":
                 print(f"   new query: {update['query']}")
             state.update(update)
 
     print("\n" + state["answer"])
-    print("\nSources:")
-    for name in dict.fromkeys(Path(d.metadata["source"]).name for d in state["docs"]):
-        print("  -", name)
+    if state["docs"]:
+        print("\nSources:")
+        for name in dict.fromkeys(Path(d.metadata["source"]).name for d in state["docs"]):
+            print("  -", name)
 
 
 if __name__ == "__main__":
