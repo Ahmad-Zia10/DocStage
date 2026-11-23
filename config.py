@@ -3,6 +3,7 @@
   - Query phase     -> TOP_K, the LLM
 """
 from langchain_huggingface import HuggingFaceEmbeddings
+from functools import lru_cache
 import os
 from dotenv import load_dotenv
 
@@ -43,6 +44,11 @@ EMBEDDING_MODELS = {
 # LLM 
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 LLM_TEMPERATURE = 0.0  # 0 = as deterministic/factual as possible
+
+@lru_cache(maxsize=1)
+def get_llm():
+    from langchain_groq import ChatGroq
+    return ChatGroq(model=LLM_MODEL, temperature=LLM_TEMPERATURE)
 
 #create an embeddings object to be used in both ingest.py and ask.py
 def get_embeddings():
